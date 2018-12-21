@@ -47,6 +47,14 @@ LiquidCrystal_I2C lcd(0x27, 16, 2);
     int grijsw75State = 0;         // variable for reading the drinkwater 75% status
     int grijsw100State = 0;        // variable for reading the drinkwater 100% status
 
+void WaterStatus(int state, int regel1, int regel2, String tekst){
+  if (state == HIGH) {
+    lcd.clear();
+    lcd.setCursor(regel1, regel2);    
+    lcd.print (tekst);
+  }
+}
+
     
 void setup() {
 Serial.begin(9600);
@@ -79,31 +87,14 @@ void loop() {
     delay(1000);
     drinkw25State = digitalRead(drinkw25Pin);
   }
+
+  WaterStatus(drinkw25State, 0, 0, "Drinkwater 25%");
+
+  WaterStatus(drinkw50State, 0, 0, "Drinkwater 50%");
+
+  WaterStatus(drinkw75State, 0, 0, "Drinkwater 75%");
   
-  if (drinkw25State == HIGH) {
-    lcd.clear();
-    lcd.setCursor(0,0);
-    lcd.print ("Drinkwater 25%");
-  }
-  
-  if (drinkw50State == HIGH ) {
-    lcd.clear();
-    lcd.setCursor(0,0);
-    lcd.print ("Drinkwater 50%");
-  }
-  
-  if (drinkw75State == HIGH) {
-    lcd.clear();
-    lcd.setCursor(0,0);
-    lcd.print ("Drinkwater 75%");
-  }
-  
-  if (drinkw100State == HIGH) {
-    // turn LCD 100% on:
-    lcd.clear();
-    lcd.setCursor(0,0);
-    lcd.print ("Drinkwater 100%");
-  }
+  WaterStatus(drinkw100State, 0, 0, "Drinkwater 100%");
   
 // check niveau grijswatertank
   while (grijsw25State == LOW)  {
@@ -114,29 +105,14 @@ void loop() {
     delay(1000);
     drinkw25State = digitalRead(drinkw25Pin);
   }
+  
+  WaterStatus(grijsw25State, 0, 1, "Grijswater 25%");
 
-  if (grijsw25State == HIGH) {
-    lcd.clear();
-    lcd.setCursor(0,1);
-    lcd.print ("Grijswater 25%");
-  }
+  WaterStatus(grijsw50State, 0, 1, "Grijswater 50%"); 
 
-  if (grijsw50State == HIGH) {
-    lcd.clear();
-    lcd.setCursor(0,1);
-    lcd.print ("Grijswater 50%");
-  }
+  WaterStatus(grijsw75State, 0, 1, "Grijswater 75%");
 
-  if (grijsw75State == HIGH) {
-    lcd.clear();
-    lcd.setCursor(0,1);
-    lcd.print ("Grijswater 75%");
-  }
+  WaterStatus(grijsw100State, 0, 1, "Grijswater 100%");
 
-  if (grijsw100State == HIGH) {
-    lcd.clear();
-    lcd.setCursor(0,1);
-    lcd.print ("Grijswater 100%");
-  }
   delay(5000);
 }
