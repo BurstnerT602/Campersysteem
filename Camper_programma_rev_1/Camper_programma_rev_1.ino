@@ -4,7 +4,7 @@
   Programma voor Camperdisplay
   created 2018
   by Geert Huizing
-  modified 18 Dec 2018
+  modified 22 Dec 2018
  
 */
 #include <Wire.h>
