@@ -1,4 +1,3 @@
-
 /*
   PIN AANSLUITINGEN Ultrasoon:
  *
@@ -6,6 +5,8 @@
  * Trig --> 12
  * Echo --> 8
  * GND  --> GND
+ * 
+ * * Walstroom --> pin30
  * 
  * Gegevens drinkwaterwatertank
  * hoogte = 40cm
@@ -18,11 +19,9 @@
  * - --> GND blauw
  * 
  * Exacte waarden berekenen met multimeter:
- * 
  * Vin op adapter = 12.41V
  * Vout op Arduino = 2.497V
  * 5V op Arduino = 5.15V
- * 
  * Vin / vOut = factor
  * 12.41 / 2.497 = 4.97
  */
@@ -31,19 +30,22 @@
 #include <WaterTank.h>
 #include <SimpleDHT.h>
 #include <DS3231.h>
+#include <Nextion.h>
+#include <nextionlib.h>
+
+
 
 WaterTank vuilWaterTank = WaterTank(22,24,26,28);
-//WaterTank schoonWaterTank = WaterTank(32,34,36,38);
-//LiquidCrystal_I2C lcd(0x27, 16,2);
 DS3231  rtc(SDA, SCL);
+NextionLib Display;
 
 //=============================================================
 // Ultrasoon drinkwatertank
 const int trigPin = 12;   // trigger pin
 const int echoPin = 8;    // echo in
 
-float duration;           // variabele voor tijdsduur als kommagetal (float)
-float distance;           // variabele voor afstand als kommagetal (float)
+int   duration;           // variabele voor tijdsduur als kommagetal (float)
+int   distance;           // variabele voor afstand als kommagetal (float)
 
 //==============================================================
 // Accuspanning Woonaccu
@@ -64,6 +66,11 @@ const float factorstartaccu = 4.092;        // reductie factor van het Voltage S
 //================================================================
 // Constante spanning arduino
 const float vCC = 5.15;                     // Arduino invoer voltage (na te meten met voltmeter)
+
+//================================================================
+// Aanwezigheid walstroom
+const int WalstroomPin = 30;
+int WalstroomState = 0;
 
 //=================================================================
 // Temperatuur / vochtmeting DHT11
@@ -90,96 +97,77 @@ void loop() {
 
   duration = pulseIn(echoPin, HIGH);                                    
   distance = (duration * 0.0343) / 2; 
+  Display.Send(80-(distance * 2), "Drinkw");
 
-  Serial.print("Drinkwater ");
-  Serial.print((80-(distance * 2)) ,0);
-  Serial.println(" ltr");   
-
-  //Uitlezen Vuilwatertank.
-  WaterTankStatus vuilWaterTankStatus = vuilWaterTank.GetStatus();
-  
+    
+   //Uitlezen Vuilwatertank.
+  WaterTankStatus vuilWaterTankStatus = vuilWaterTank.GetStatus(); 
   switch(vuilWaterTankStatus){
     case WaterTankStatus::Vol:
-      Serial.println("Vuilwater  vol");
+      Display.Send("100", "Gwater", "63844");
     break;
     case WaterTankStatus::DrieKwart:
-      Serial.println("Vuilwater 75 - 100%");
+      Display.Send("75-100", "Gwater", "64800");
     break;
     case WaterTankStatus::Half:
-      Serial.println("Vuilwater 50 - 75%");
+      Display.Send("50-75", "Gwater", "2016");
     break;
     case WaterTankStatus::Kwart:
-      Serial.println("Vuilwater 25 - 50%");
+      Display.Send("25-50", "Gwater", "2016");
     break;
     case WaterTankStatus::Leeg:
-      Serial.println("Vuilwater  0 - 25% ");
+      Display.Send("0-25", "Gwater", "2016");  
     break;
   }
 
-  // Uitlezen woonaccuspanning
-   woonaccuSensorVal = analogRead(woonaccuSensorPin);       // lees de waarde van de sensor (0 - 1023) 
-   vwoonOut = (woonaccuSensorVal / 1024) * vCC;             // converteer de gelezen waarde naar het daadwerkelijke voltage op de analoge pin
-   vwoonIn =  vwoonOut * factorwoonaccu;  
-     Serial.print("Woonaccu  ");Serial.print(vwoonIn);
-     Serial.println("V");                                   // converteer het voltage naar het voltage aan de bron door te vermenigvuldigen met de factor
+//  // Uitlezen woonaccuspanning
+//   woonaccuSensorVal = analogRead(woonaccuSensorPin);       // lees de waarde van de sensor (0 - 1023) 
+//   vwoonOut = (woonaccuSensorVal / 1024) * vCC;             // converteer de gelezen waarde naar het daadwerkelijke voltage op de analoge pin
+//   vwoonIn =  vwoonOut * factorwoonaccu;  
+//     Serial.print("Woonaccu  ");Serial.print(vwoonIn);
+//     Serial.println("V");                                   // converteer het voltage naar het voltage aan de bron door te vermenigvuldigen met de factor
+//
+//  // Uitlezen startaccuspanning
+//   startaccuSensorVal = analogRead(startaccuSensorPin);       // lees de waarde van de sensor (0 - 1023) 
+//   vstartOut = (startaccuSensorVal / 1024) * vCC;             // converteer de gelezen waarde naar het daadwerkelijke voltage op de analoge pin
+//   vstartIn =  vstartOut * factorstartaccu;                   // converteer het voltage naar het voltage aan de bron door te vermenigvuldigen met de factor
+//     Serial.print("Startaccu ");Serial.print(vstartIn);
+//     Serial.println("V");
+//
+//  Uitlezen walstroom
+      WalstroomState = digitalRead(WalstroomPin);
+      if (WalstroomState == HIGH) {
+        Serial.print("Wstroom.bco=2016");
+        Serial.write(0xff);
+        Serial.write(0xff);
+        Serial.write(0xff);
+      } else {
+        Serial.print("Wstroom.bco=63488");
+        Serial.write(0xff);
+        Serial.write(0xff);
+        Serial.write(0xff);
+      }
 
-  // Uitlezen startaccuspanning
-   startaccuSensorVal = analogRead(startaccuSensorPin);       // lees de waarde van de sensor (0 - 1023) 
-   vstartOut = (startaccuSensorVal / 1024) * vCC;             // converteer de gelezen waarde naar het daadwerkelijke voltage op de analoge pin
-   vstartIn =  vstartOut * factorstartaccu;                   // converteer het voltage naar het voltage aan de bron door te vermenigvuldigen met de factor
-     Serial.print("Startaccu ");Serial.print(vstartIn);
-     Serial.println("V");
-
-  // Uitlezen temeratuur & Luchtvochtigheid
-  byte temperaturebinnen = 0;
-  byte humiditybinnen = 0;
+      
+//   Uitlezen temeratuur & Luchtvochtigheid
+  byte temperaturebinnen;
+  byte humiditybinnen;
   byte databinnen[40] = {0};
   dht11.read(pinDHT11binnen, &temperaturebinnen, &humiditybinnen, databinnen);
-
-    Serial.print("Temperatuur binnen "); Serial.print((int)temperaturebinnen); Serial.println(" *C, ");
-    Serial.print("Luchtvocht. binnen "); Serial.print((int)humiditybinnen); Serial.println(" %");
-    
-  byte temperaturebuiten = 0;
-  byte humiditybuiten = 0;
+  Display.Send((int)temperaturebinnen-2, "Tbinnen");
+  Display.Send((int)humiditybinnen, "Hbinnen");
+      
+  byte temperaturebuiten;
+  byte humiditybuiten;
   byte databuiten[40] = {0};
   dht11.read(pinDHT11buiten, &temperaturebuiten, &humiditybuiten, databuiten);
 
-    Serial.print("Temperatuur buiten "); Serial.print((int)temperaturebuiten); Serial.println(" *C, ");
-    Serial.print("Luchtvocht. buiten "); Serial.print((int)humiditybuiten); Serial.println(" %");
-
-  //Uitlezen Clock RTC
-    Serial.print(rtc.getDOWStr());
-    Serial.print(" ");
-    Serial.println(rtc.getTimeStr());
-    Serial.println(" ");
-     delay(10000);
-     
-//  switch(schoonWaterStatus){
-//    case WaterTankStatus::Vol:
-//      // De schoonwatertank is Vol
-//      lcd.setCursor(0, 0);
-//      lcd.print("Drinkwater 100%");
-//    break;
-//    case WaterTankStatus::DrieKwart:
-//      // De schoonwatertank is DrieKwart
-//      lcd.setCursor(0, 0);
-//      lcd.print("Drinkwater  75%");
-//    break;
-//    case WaterTankStatus::Half:
-//      // De schoonwatertank is Half
-//      lcd.setCursor(0, 0);
-//      lcd.print("Drinkwater  50%");
-//    break;
-//    case WaterTankStatus::Kwart:
-//      // De schoonwatertank is Kwart
-//      lcd.setCursor(0, 0);
-//      lcd.print("Drinkwater  25%");
-//    break;
-//    case WaterTankStatus::Leeg:
-//      // De schoonwatertank is Leeg
-//      lcd.setCursor(0, 0);
-//      lcd.print("Drinkwater leeg ");
-//    break;
-//  }
+  Display.Send((int)temperaturebuiten-2, "Tbuiten");
+  Display.Send((int)humiditybuiten, "Hbuiten");
+  
+  //  //Uitlezen Clock RTC
+  Display.Send(rtc.getTimeStr(FORMAT_SHORT), "Time");
+  
+ delay(1000);
 
 }
