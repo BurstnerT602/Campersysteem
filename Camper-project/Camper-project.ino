@@ -38,11 +38,19 @@ const int VwaterPin = 10;
 
 //==============================================================
 // Koelkastventilatie.
-const int temp1Pin = A8;
-const int temp2Pin = A9;
-float temp1;
-float temp2;
-const int fanPin = 12;
+const int pinTempRuimte = A8;
+const int pinTempCondens = A9;
+const int fanControl = 12; // pwm sturing ventilator.
+int avgLoop = 60;
+double kp=5;
+double ki=3;
+double kd=0;
+double minTdiff = 20;
+double minTstart = 25;
+double commandMin = 4;
+double commandMax = 255;
+double tempRuimte, tempCondens, tempDiff, command;
+PID myPID(&tempDiff, &command, &minTdiff, kp, ki, kd, DIRECT); // instellen PID.
 
 //==============================================================
 // Accuspanning Woonaccu.
@@ -89,20 +97,48 @@ float gaslevel;
 int gasnivo;
 
 //=================================================================
-// Time
-
-//=================================================================
 
 void setup() {  
     pinMode(LED_BUILTIN, OUTPUT);
     digitalWrite(LED_BUILTIN, LOW);             
     Serial.begin(9600);
+    Serial1.begin(9600);
     rtc.begin();
     pinMode(trigPin, OUTPUT);                  // stel de trigger pin in als uitvoer drinkwatertank
     pinMode(echoPin, INPUT);                   // stel de echo pin in als invoer
-    pinMode(VwaterPin, OUTPUT);
-    pinMode(fanPin, OUTPUT);
+    pinMode(VwaterPin, OUTPUT);                // sturing relais
+    pinMode(fanControl, OUTPUT);               // pwm sturing ventilatie
+
+    tempRuimte = getTempRuimte();
+    tempCondens = getTempCondens();
+    tempDiff = tempCondens - tempRuimte;
+    if(tempDiff < 0) {
+      tempDiff = 0; 
+      }   
+
+// start PID
+    myPID.SetMode(AUTOMATIC);
+    myPID.SetOutputLimits(commandMin, commandMax);
 }
+
+//ruimte temp
+  double getTempRuimte() {
+    return getTemp(pinTempRuimte);
+}
+
+//condensor temp
+  double getTempCondens() {
+    return getTemp(pinTempCondens);
+}
+
+//get temp of pin sensor
+  double getTemp(int pin) {
+    double rawTemp;
+    rawTemp = analogRead(pin);
+    double temp = rawTemp * (5.0 / 1023.0 * 100.0);
+    return temp;
+}
+
   
 void loop() {
  
@@ -120,7 +156,7 @@ void loop() {
     
 //   Vuilwatertank.
       Vwcounter ++ ;
-     if (Vwcounter == 10) {
+     if (Vwcounter == 3600) {
        digitalWrite(VwaterPin, HIGH); 
        delay(1000);
        Vwcounter = 0;
@@ -210,14 +246,33 @@ void loop() {
           gasnivo = (gaslevel);
           Display.Send((int)gasnivo / 46.5, "LPG");
 
-//    Koelkastventielatie
-//       if ((int)temperaturebuiten >= 30) {
-//          digitalWrite(KkastpwmPin, HIGH);       
-//      } else {
-//          digitalWrite(KkastpwmPin, LOW);       
-//    }
-      temp1 = analogRead(temp1Pin * 0.48828125);
-      temp2 = analogRead(temp2Pin * 0.48828125);
- delay(1000);
-   
+//    Koelkastventielatie ================================================
+  //this loop is to get a more stable temp.
+    double avgRuimte = 0;
+     double avgCondens = 0;
+      for(int i=0; i < avgLoop; i++) {
+      int tRuimte = getTempRuimte();
+      int tCondens = getTempCondens();
+      avgRuimte += tRuimte;
+      avgCondens += tCondens;
+  }
+
+  //calculate setpoint (tempDiff)
+    tempRuimte = avgRuimte / avgLoop;
+    tempCondens = (avgCondens / avgLoop)-1;
+    tempDiff = tempCondens - tempRuimte;
+      if(tempDiff < 0) {
+      tempDiff = 0;
+  }
+
+  //process PID 
+      myPID.Compute();
+  //PID processed command uitvoeren
+      if(tempCondens > minTstart){
+        analogWrite(fanControl, command);  
+        } else {
+        digitalWrite(fanControl, LOW);
+        command = 4;
+    }
+ 
 }
