@@ -260,6 +260,8 @@ void loop() {
   //calculate setpoint (tempDiff)
     tempRuimte = avgRuimte / avgLoop;
     tempCondens = (avgCondens / avgLoop)-1;
+    Display.Send(tempRuimte, "Truimte");
+    Display.Send(tempCondens, "Tcondens");
     tempDiff = tempCondens - tempRuimte;
       if(tempDiff < 0) {
       tempDiff = 0;
@@ -269,9 +271,11 @@ void loop() {
       myPID.Compute();
   //PID processed command uitvoeren
       if(tempCondens > minTstart){
-        analogWrite(fanControl, command);  
+        analogWrite(fanControl, command); 
+        Display.Send(command / 255, "Fanspeed"); 
         } else {
         digitalWrite(fanControl, LOW);
+        Display.Send(0, "Fanspeed");
         command = 4;
     }
  
