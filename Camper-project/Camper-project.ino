@@ -1,16 +1,8 @@
 /*
-  
  * Gegevens drinkwaterwatertank
  * hoogte = 40cm
  * inhoud is 80 ltr.
  * factor: 80/40 = per centimeter 2 ltr.
- * 
- * Exacte waarden spanningen berekenen met multimeter:
- * Vin op adapter = 25V
- * Vout op Arduino = 5V
- * 5V op Arduino = 5.15V
- * Vin / vOut = factor
- * 25,00 / 5,00 = 5
  */
 #include <Wire.h>
 #include <WaterTank.h>
@@ -28,8 +20,8 @@ NextionLib Display;
 // Ultrasoon drinkwatertank.
 const int trigPin = 4;    // trigger pin
 const int echoPin = 5;    // echo in
-int   duration;           // variabele voor tijdsduur als kommagetal
-int   distance;           // variabele voor afstand als kommagetal
+int   duration;           // variabele voor tijdsduur
+int   distance;           // variabele voor afstand
 
 //=============================================================
 // Vuilwatertank.
@@ -46,19 +38,19 @@ double kp=5;
 double ki=3;
 double kd=0;
 double minTdiff = 20;
-double minTstart = 25;
+double minTstart = 45;
 double commandMin = 4;
 double commandMax = 255;
 double tempRuimte, tempCondens, tempDiff, command;
-PID myPID(&tempDiff, &command, &minTdiff, kp, ki, kd, DIRECT); // instellen PID.
+PID myPID(&tempDiff, &command, &minTdiff, kp, ki, kd, DIRECT);    // instellen PID.
 
 //==============================================================
 // Accuspanning Woonaccu.
-const int woonaccuSensorPin = A1;          // sensor pin
-float vwoonIn;                             // gemeten voltage (3.3V = max. 16.5V, 5V = max 25V)
+const int woonaccuSensorPin = A1;          
+float vwoonIn;                             
 float vwoonOut;
-float woonaccuSensorVal;                   // waarde op pin A1 (0 - 1023)
-const float factorwoonaccu = 5;        // reductie factor van het Voltage Sensor shield
+float woonaccuSensorVal;                   
+const float factorwoonaccu = 3.55;        // reductie factor spanningsdeler.
 
 //==============================================================
 // Laden / ontladen woonaccu.
@@ -69,15 +61,15 @@ float AwoonOut;
 
 //================================================================
 // Accuspanning Startaccu.
-const int startaccuSensorPin = A2;          // sensor pin
-float vstartIn;                             // gemeten voltage (3.3V = max. 16.5V, 5V = max 25V)
+const int startaccuSensorPin = A2;          
+float vstartIn;                             
 float vstartOut;
-float startaccuSensorVal;                   // waarde op pin A2 (0 - 1023)
-const float factorstartaccu = 5;        // reductie factor van het Voltage Sensor shield
+float startaccuSensorVal;                   
+const float factorstartaccu = 3.55;        // reductie factor spanningsdeler
 
 //================================================================
 // Constante spanning arduino.
-const float vCC = 5.15;                     // Arduino invoer voltage (na te meten met voltmeter)
+const float vCC = 5.00;                     // werkspanning arduino
 
 //================================================================
 // Aanwezigheid walstroom.
@@ -184,7 +176,7 @@ void loop() {
       }
    
 //        Woonaccuspanning
-      woonaccuSensorVal = analogRead(woonaccuSensorPin);       // lees de waarde van de sensor (0 - 1023) 
+      woonaccuSensorVal = analogRead(woonaccuSensorPin);       
         vwoonOut = (woonaccuSensorVal / 1024) * vCC;             // converteer de gelezen waarde naar het daadwerkelijke voltage op de analoge pin
         vwoonIn =  vwoonOut * factorwoonaccu;  
      if(vwoonIn < 12.80)  {
@@ -206,10 +198,10 @@ void loop() {
        }
         
 //       Startaccuspanning
-       startaccuSensorVal = analogRead(startaccuSensorPin);       // lees de waarde van de sensor (0 - 1023) 
+       startaccuSensorVal = analogRead(startaccuSensorPin);       
          vstartOut = (startaccuSensorVal / 1024) * vCC;             // converteer de gelezen waarde naar het daadwerkelijke voltage op de analoge pin
          vstartIn =  vstartOut * factorstartaccu;  
-      if(vstartIn < 13.20)  {
+      if(vstartIn < 12.80)  {
         Display.Send(String(vstartIn, 1), "Vstart", "63488"); 
        } else {
         Display.Send(String(vstartIn, 1), "Vstart", "2016");        
@@ -259,9 +251,9 @@ void loop() {
 
   //calculate setpoint (tempDiff)
     tempRuimte = avgRuimte / avgLoop;
-    tempCondens = (avgCondens / avgLoop)-1;
+    tempCondens = (avgCondens / avgLoop);
     Display.Send(tempRuimte, "Truimte");
-    Display.Send(tempCondens, "Tcondens");
+    Display.Send(tempCondens, "Tcondensor");
     tempDiff = tempCondens - tempRuimte;
       if(tempDiff < 0) {
       tempDiff = 0;
@@ -272,7 +264,7 @@ void loop() {
   //PID processed command uitvoeren
       if(tempCondens > minTstart){
         analogWrite(fanControl, command); 
-        Display.Send(command / 255, "Fanspeed"); 
+        Display.Send(command, "Fanspeed"); 
         } else {
         digitalWrite(fanControl, LOW);
         Display.Send(0, "Fanspeed");
